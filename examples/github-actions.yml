@@ -1,0 +1,42 @@
+# Archrail architecture gate for pull requests.
+#
+# Copy to .github/workflows/archrail.yml in your repository.
+#
+# Fails the build when a PR introduces a non-baselined `error` violation, and
+# ensures ARCHRAIL.md was regenerated. No Archrail-hosted service is required.
+name: architecture-gate
+
+on:
+  pull_request:
+
+jobs:
+  archrail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for diff-scoping against the base branch
+
+      # Make the shared profile catalog available locally (adjust to your setup:
+      # a submodule, a checkout of the catalog repo, or a vendored copy).
+      # - uses: actions/checkout@v4
+      #   with:
+      #     repository: your-org/archrail-catalog
+      #     path: .archrail-catalog
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Install archrail
+        run: go install github.com/archrail/archrail/cmd/archrail@latest
+
+      - name: Verify ARCHRAIL.md is up to date
+        run: archrail sync --check
+
+      - name: Architecture conformance check (changed files only)
+        env:
+          # Provide the gateway key as a CI secret ONLY if you enforce semantic
+          # (LLM) rules in CI. Deterministic checks need no key.
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+        run: archrail check --base "origin/${{ github.base_ref }}" --format json

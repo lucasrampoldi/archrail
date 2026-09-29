@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Archrail pre-commit hook.
+#
+# Install:
+#   cp examples/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# It gates staged changes against the adopted architecture profile. It relies
+# only on Archrail's documented exit codes:
+#   0 = clean, 1 = violations, 2 = operational error.
+set -euo pipefail
+
+if ! command -v archrail >/dev/null 2>&1; then
+  echo "archrail not found on PATH; skipping architecture check." >&2
+  exit 0
+fi
+
+# Only evaluate staged files so unrelated legacy code doesn't block the commit.
+archrail check --staged
